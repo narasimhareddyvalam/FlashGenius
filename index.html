@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashGenius - AI Flashcard Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- TensorFlow.js for embeddings -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder@1.3.3/dist/universal-sentence-encoder.min.js"></script>
+    <script type="module" src="app.js"></script>
+   <!-- Add this in the head section of index.html -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          mermaid.initialize({
+            startOnLoad: true,   // ✅ set this to true
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: {
+              curve: 'basis',
+              useMaxWidth: true
+            }
+          });
+        });
+        </script>        
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-brain"></i> FlashGenius
+        </div>
+        <div class="tagline">Generate intelligent flashcards with AI</div>
+    </header>
+    
+    <div class="container">
+        <div class="input-section">
+            <div class="title-row">
+                <h2 class="section-title">
+                    <i class="fas fa-file-alt"></i> What Topic Are We Learning Today?
+                </h2>
+                <button id="mic-btn" class="control-btn">
+                    <i class="fas fa-microphone"></i> Speak
+                </button>
+                <button id="audio-btn" class="control-btn">
+                    <i class="fas fa-volume-up"></i> Listen
+                </button>
+            </div>
+            <div class="input-options">
+                <div class="tab-container">
+                    <button class="tab-btn active" data-tab="input">Enter Topic or Material</button>
+                    <button class="tab-btn" data-tab="library">Knowledge Library</button>
+                </div>
+                <div class="tab-content" id="input-tab">
+                    <textarea id="input-text" placeholder="Enter any topic (e.g., 'Prompt Engineering', 'GenAI') or paste your learning material here..."></textarea>
+                </div>
+                <div class="tab-content hidden" id="library-tab">
+                    <div class="library-controls">
+                        <h3>My Knowledge Library</h3>
+                        <p>Add documents to your knowledge base to generate more accurate flashcards.</p>
+                        
+                        <div class="file-input-container">
+                            <input type="file" id="kb-file-upload" accept=".txt,.pdf">
+                            <label for="kb-file-upload" class="file-label">
+                                <i class="fas fa-upload"></i> Add Document (txt only)
+                            </label>
+                            <span id="kb-file-name">No file selected</span>
+                        </div>
+                        <input type="text" id="kb-doc-title" placeholder="Document Title (optional)" class="kb-title-input">
+                        <button id="kb-add-btn" class="control-btn">
+                            <i class="fas fa-plus"></i> Add to Library
+                        </button>
+                    </div>
+                    
+                    <div class="library-list">
+                        <h4>Saved Documents <span id="kb-count">(0)</span></h4>
+                        <div id="kb-loading" class="kb-loading hidden">
+                            <div class="spinner"></div>
+                            <p>Processing document and generating embeddings...</p>
+                        </div>
+                        <ul id="kb-documents">
+                            <!-- Will be populated dynamically -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="options-row">
+                <div class="option-group">
+                    <label class="option-label">Synthetic Data</label>
+                    <div class="toggle-wrapper">
+                        <div class="toggle">
+                            <input type="checkbox" id="use-synthetic" checked>
+                            <label for="use-synthetic"></label>
+                        </div>
+                        <span class="toggle-text">Use Synthetic Data</span>
+                    </div>
+                </div>
+                <div class="option-group">
+                    <label class="option-label">Number of Cards</label>
+                    <select id="card-count">
+                        
+                        <option value="10" selected>10 cards</option>
+                        <option value="15">15 cards</option>
+                        <option value="20">20 cards</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label class="option-label">Difficulty Level</label>
+                    <select id="difficulty">
+                        <option value="basic">Basic</option>
+                        <option value="intermediate" selected>Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label class="option-label">Knowledge Base</label>
+                    <div class="toggle-wrapper">
+                        <div class="toggle">
+                            <input type="checkbox" id="use-kb" checked>
+                            <label for="use-kb"></label>
+                        </div>
+                        <span class="toggle-text">Use Knowledge Library</span>
+                    </div>
+                </div>
+            </div>
+            <div class="generate-btn-container">
+                <button id="generate-btn" class="generate-btn">
+                    <i class="fas fa-magic"></i> Generate Flashcards
+                </button>
+            </div>
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        
+        <div class="flashcards-section">
+            <h2 class="section-title">
+                <i class="fas fa-clone"></i> Your Flashcards
+            </h2>
+            <div class="flashcard-controls">
+                <div class="controls-left">
+                    <button id="flashcard-audio-btn" class="control-btn">
+                        <i class="fas fa-volume-up"></i> Listen
+                    </button>
+                    <button id="download-btn" class="control-btn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button id="share-btn" class="control-btn">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                </div>
+                <div class="pagination">
+                    <button id="prev-btn" class="nav-btn" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span id="pagination-text">0/0</span>
+                    <button id="next-btn" class="nav-btn" disabled>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flashcard-container">
+                <div class="flashcard-placeholder">
+                    <div class="placeholder-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <p>Your flashcards will appear here</p>
+                </div>
+                <div class="flashcard" style="display: none;">
+                    <div class="flashcard-face flashcard-front">
+                        <div class="flashcard-content">What is the capital of France?</div>
+                    </div>
+                    <div class="flashcard-face flashcard-back">
+                        <div class="flashcard-content">Paris</div>
+                        <div class="flashcard-sources"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="error-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-circle"></i> Error</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="error-message">An error occurred.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-close-btn" class="control-btn">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="save-notification">
+        <i class="fas fa-check-circle"></i> <span id="notification-text">Flashcards saved successfully!</span>
+    </div>
+    
+    <div class="speech-notification">
+        <i class="fas fa-microphone"></i> <span id="speech-status">Listening...</span>
+    </div>
+
+</body>
+</html>
